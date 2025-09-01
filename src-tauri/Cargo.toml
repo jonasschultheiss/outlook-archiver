@@ -22,4 +22,14 @@ tauri = { version = "2", features = [] }
 tauri-plugin-opener = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+chrono = { version = "0.4", features = ["serde"] }
+thiserror = "1.0"
+# PST parsing - we'll implement custom PST parsing or use alternative approach
+# For now, we'll use basic file I/O and implement PST parsing manually
+# pst = "0.2"  # Commented out due to lib target issues
+# PDF generation - using a compatible version
+printpdf = "0.6"
+# Additional dependencies for file handling
+tokio = { version = "1.0", features = ["full"] }
+anyhow = "1.0"
 
