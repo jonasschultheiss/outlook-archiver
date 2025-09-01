@@ -1,21 +1,7 @@
 use std::path::PathBuf;
 use chrono::{DateTime, Local};
-use thiserror::Error;
-
-use crate::pst_processor::Email;
-
-// Error types for PDF generation
-#[derive(Debug, Error)]
-pub enum PdfError {
-    #[error("PDF generation failed: {0}")]
-    GenerationFailed(String),
-    #[error("File write error: {0}")]
-    FileWriteError(String),
-    #[error("Invalid output directory: {0}")]
-    InvalidOutputDirectory(String),
-    #[error("Permission denied: {0}")]
-    PermissionDenied(String),
-}
+use crate::errors::{PdfError, PdfResult};
+use crate::types::Email;
 
 // PDF generator for converting emails to PDF format
 pub struct PdfGenerator {
@@ -26,7 +12,7 @@ pub struct PdfGenerator {
 
 impl PdfGenerator {
     /// Create a new PDF generator with output directory and base filename
-    pub fn new(output_dir: PathBuf, base_name: String) -> Result<Self, PdfError> {
+    pub fn new(output_dir: PathBuf, base_name: String) -> PdfResult<Self> {
         // Validate output directory exists and is writable
         if !output_dir.exists() {
             return Err(PdfError::InvalidOutputDirectory(
@@ -53,7 +39,7 @@ impl PdfGenerator {
     }
 
     /// Generate a PDF file from a collection of emails
-    pub fn generate_pdf(&self, _emails: Vec<Email>, sequence: u32) -> Result<PathBuf, PdfError> {
+    pub fn generate_pdf(&self, _emails: Vec<Email>, sequence: u32) -> PdfResult<PathBuf> {
         // TODO: Implement PDF generation using printpdf
         // This will be implemented in a later task
         
@@ -73,7 +59,7 @@ impl PdfGenerator {
     }
 
     /// Validate that the output directory is writable
-    pub fn validate_output_directory(&self) -> Result<(), PdfError> {
+    pub fn validate_output_directory(&self) -> PdfResult<()> {
         // TODO: Implement write permission validation
         // This will be implemented in a later task
         Ok(())

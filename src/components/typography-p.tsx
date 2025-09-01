@@ -1,7 +1,10 @@
-export function TypographyP() {
-  return (
-    <p className="leading-7 [&:not(:first-child)]:mt-6">
-      The king, seeing how much happier his subjects were, realized the error of his ways and repealed the joke tax.
-    </p>
-  );
+import { cn } from "@/lib/utils";
+
+interface TypographyPProps {
+  children: React.ReactNode;
+  className?: string;
+}
+
+export function TypographyP({ children, className }: TypographyPProps) {
+  return <p className={cn("leading-7", className)}>{children}</p>;
 }
