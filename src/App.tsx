@@ -245,7 +245,7 @@ function App() {
           )}
 
           {/* Application State Summary for Development */}
-          {process.env["NODE_ENV"] === "development" && (
+          {import.meta.env.DEV && (
             <>
               <Separator className="my-6" />
               <details className="text-xs text-muted-foreground bg-muted p-4 rounded">
