@@ -4,13 +4,17 @@ import { Badge } from "./ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { ProcessingProgress } from "../types";
 import { CheckCircle, XCircle, Clock, FileText } from "lucide-react";
+import { ProcessingErrorDisplay } from "./ErrorDisplay";
+import { mapBackendErrorToGerman } from "../lib/errorHandling";
 
 interface ProgressDisplayProps {
   progress: ProcessingProgress;
   isProcessing: boolean;
+  onRetry?: () => void;
+  onReset?: () => void;
 }
 
-export function ProgressDisplay({ progress, isProcessing }: ProgressDisplayProps) {
+export function ProgressDisplay({ progress, isProcessing, onRetry, onReset }: ProgressDisplayProps) {
   // Calculate progress percentage
   const progressPercentage =
     progress.totalEmails > 0 ? Math.round((progress.processedEmails / progress.totalEmails) * 100) : 0;
@@ -116,10 +120,18 @@ export function ProgressDisplay({ progress, isProcessing }: ProgressDisplayProps
           </div>
         )}
 
-        {/* Status Message */}
-        <Alert variant={getAlertVariant()}>
-          <AlertDescription className="text-sm">{getStatusMessage()}</AlertDescription>
-        </Alert>
+        {/* Status Message or Error Display */}
+        {progress.error ? (
+          <ProcessingErrorDisplay
+            error={mapBackendErrorToGerman(progress.error)}
+            {...(onRetry && { onRetry })}
+            {...(onReset && { onReset })}
+          />
+        ) : (
+          <Alert variant={getAlertVariant()}>
+            <AlertDescription className="text-sm">{getStatusMessage()}</AlertDescription>
+          </Alert>
+        )}
 
         {/* Additional Status Information */}
         {progress.status && progress.status !== getStatusMessage() && (

@@ -1,9 +1,11 @@
 import React, { useState, useRef, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Button } from "./ui/button";
-import { Alert, AlertDescription } from "./ui/alert";
 import { Badge } from "./ui/badge";
-import { Upload, File, AlertCircle, CheckCircle } from "lucide-react";
+import { Upload, File, CheckCircle } from "lucide-react";
+import { ErrorDisplay } from "./ErrorDisplay";
+import { logError } from "../lib/errorHandling";
+import type { LocalizedError } from "../types";
 
 interface FileSelectorProps {
   onFileSelect: (filePath: string) => void;
@@ -13,24 +15,63 @@ interface FileSelectorProps {
 
 export function FileSelector({ onFileSelect, selectedFile, disabled = false }: FileSelectorProps) {
   const [isDragOver, setIsDragOver] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<LocalizedError | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Validate PST file
-  const validatePstFile = useCallback((file: File): string | null => {
+  const validatePstFile = useCallback((file: File): LocalizedError | null => {
+    const timestamp = new Date();
+
     // Check file extension
     if (!file.name.toLowerCase().endsWith(".pst")) {
-      return "Datei muss eine PST-Datei sein (.pst)";
+      return {
+        code: "INVALID_FILE_EXTENSION",
+        message: "File must be a PST file",
+        germanMessage: "Datei muss eine PST-Datei sein (.pst)",
+        severity: "error",
+        recoverable: true,
+        recoverySuggestions: [
+          "Wählen Sie eine Datei mit der Erweiterung .pst aus",
+          "Überprüfen Sie, ob es sich um eine Microsoft Outlook PST-Datei handelt"
+        ],
+        context: { fileName: file.name, fileSize: file.size },
+        timestamp
+      };
     }
 
     // Check file size (basic validation - not empty)
     if (file.size === 0) {
-      return "PST-Datei ist leer oder beschädigt";
+      return {
+        code: "PST_FILE_EMPTY",
+        message: "PST file is empty or corrupted",
+        germanMessage: "PST-Datei ist leer oder beschädigt",
+        severity: "error",
+        recoverable: true,
+        recoverySuggestions: [
+          "Wählen Sie eine andere PST-Datei aus",
+          "Überprüfen Sie, ob die Datei nicht beschädigt ist",
+          "Stellen Sie sicher, dass die Datei vollständig heruntergeladen wurde"
+        ],
+        context: { fileName: file.name, fileSize: file.size },
+        timestamp
+      };
     }
 
     // Additional size check - PST files are typically at least a few KB
     if (file.size < 1024) {
-      return "PST-Datei scheint zu klein zu sein";
+      return {
+        code: "PST_FILE_TOO_SMALL",
+        message: "PST file seems too small",
+        germanMessage: "PST-Datei scheint zu klein zu sein",
+        severity: "warning",
+        recoverable: true,
+        recoverySuggestions: [
+          "Überprüfen Sie, ob es sich um eine vollständige PST-Datei handelt",
+          "Wählen Sie eine andere PST-Datei aus, falls verfügbar"
+        ],
+        context: { fileName: file.name, fileSize: file.size },
+        timestamp
+      };
     }
 
     return null;
@@ -43,6 +84,7 @@ export function FileSelector({ onFileSelect, selectedFile, disabled = false }: F
 
       if (validationError) {
         setError(validationError);
+        logError(validationError, "FileSelector");
         return;
       }
 
@@ -92,12 +134,39 @@ export function FileSelector({ onFileSelect, selectedFile, disabled = false }: F
       const files = Array.from(e.dataTransfer.files);
 
       if (files.length === 0) {
-        setError("Keine Datei erkannt");
+        const noFileError: LocalizedError = {
+          code: "NO_FILE_DETECTED",
+          message: "No file detected",
+          germanMessage: "Keine Datei erkannt",
+          severity: "warning",
+          recoverable: true,
+          recoverySuggestions: [
+            "Versuchen Sie, die Datei erneut zu ziehen",
+            "Klicken Sie stattdessen auf 'Datei durchsuchen'"
+          ],
+          timestamp: new Date()
+        };
+        setError(noFileError);
+        logError(noFileError, "FileSelector");
         return;
       }
 
       if (files.length > 1) {
-        setError("Bitte wählen Sie nur eine PST-Datei aus");
+        const multipleFilesError: LocalizedError = {
+          code: "MULTIPLE_FILES_SELECTED",
+          message: "Multiple files selected",
+          germanMessage: "Bitte wählen Sie nur eine PST-Datei aus",
+          severity: "warning",
+          recoverable: true,
+          recoverySuggestions: [
+            "Ziehen Sie nur eine einzelne PST-Datei",
+            "Wählen Sie die gewünschte Datei einzeln aus"
+          ],
+          context: { fileCount: files.length },
+          timestamp: new Date()
+        };
+        setError(multipleFilesError);
+        logError(multipleFilesError, "FileSelector");
         return;
       }
 
@@ -201,10 +270,15 @@ export function FileSelector({ onFileSelect, selectedFile, disabled = false }: F
 
       {/* Error display */}
       {error && (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
+        <ErrorDisplay
+          error={error}
+          onDismiss={() => setError(null)}
+          onSelectNewFile={() => {
+            setError(null);
+            handleClick();
+          }}
+          compact={true}
+        />
       )}
 
       {/* Hidden file input */}

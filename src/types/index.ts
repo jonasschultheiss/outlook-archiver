@@ -128,16 +128,79 @@ export const germanErrorMessages = {
   unknownError: "Unbekannter Fehler aufgetreten"
 } as const;
 
-// Helper function to transform Zod errors to German messages
-export function transformZodError(error: z.ZodError<any>): ValidationErrors {
-  const errors: ValidationErrors = {};
+// Define LocalizedError interface here to avoid circular imports
+export interface LocalizedError {
+  code: string;
+  message: string;
+  germanMessage: string;
+  severity: "info" | "warning" | "error" | "critical";
+  recoverable: boolean;
+  recoverySuggestions?: string[];
+  originalError?: Error | unknown;
+  context?: Record<string, unknown>;
+  timestamp: Date;
+}
 
-  error.issues.forEach((err: z.ZodIssue) => {
-    const path = err.path.join(".") as keyof ProcessingConfig;
+// Helper function to transform Zod errors to German messages
+export function transformZodError(error: z.ZodError<any>): Record<string, LocalizedError[]> {
+  const errors: Record<string, LocalizedError[]> = {};
+  const timestamp = new Date();
+
+  error.issues.forEach((issue: z.ZodIssue) => {
+    const path = issue.path.join(".") || "root";
+
     if (!errors[path]) {
       errors[path] = [];
     }
-    errors[path]!.push(err.message);
+
+    let germanMessage = issue.message;
+    let code = "VALIDATION_ERROR";
+    let recoverySuggestions: string[] = [];
+
+    // Map specific Zod error types to German messages
+    switch (issue.code) {
+      case "invalid_type":
+        germanMessage = germanErrorMessages.invalidType;
+        code = "VALIDATION_INVALID_TYPE";
+        recoverySuggestions = ["Überprüfen Sie den eingegebenen Wert"];
+        break;
+      case "too_small":
+        germanMessage = issue.message.includes("String")
+          ? `Mindestens ${issue.minimum} Zeichen erforderlich`
+          : `Wert muss mindestens ${issue.minimum} sein`;
+        code = "VALIDATION_TOO_SMALL";
+        recoverySuggestions = ["Geben Sie einen größeren Wert ein"];
+        break;
+      case "too_big":
+        germanMessage = issue.message.includes("String")
+          ? `Maximal ${issue.maximum} Zeichen erlaubt`
+          : `Wert darf maximal ${issue.maximum} sein`;
+        code = "VALIDATION_TOO_BIG";
+        recoverySuggestions = ["Geben Sie einen kleineren Wert ein"];
+        break;
+      case "invalid_format":
+        germanMessage = "Ungültiges Format";
+        recoverySuggestions = ["Verwenden Sie nur erlaubte Zeichen"];
+        code = "VALIDATION_INVALID_STRING";
+        break;
+      case "custom":
+        // Keep the custom message as it's already in German from our schemas
+        germanMessage = issue.message;
+        code = "VALIDATION_CUSTOM";
+        break;
+    }
+
+    errors[path].push({
+      code,
+      message: issue.message,
+      germanMessage,
+      severity: "warning",
+      recoverable: true,
+      recoverySuggestions,
+      originalError: issue,
+      context: { path, zodCode: issue.code },
+      timestamp
+    });
   });
 
   return errors;

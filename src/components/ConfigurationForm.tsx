@@ -5,11 +5,13 @@ import { invoke } from "@tauri-apps/api/core";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
-import { Alert, AlertDescription } from "./ui/alert";
 import { Badge } from "./ui/badge";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "./ui/form";
-import { FolderOpen, Settings, AlertCircle, CheckCircle } from "lucide-react";
-import { ProcessingConfig, processingConfigSchema, type ProcessingConfigInput } from "../types";
+import { FolderOpen, Settings, CheckCircle, AlertCircle } from "lucide-react";
+import { ProcessingConfig, processingConfigSchema, type ProcessingConfigInput, transformZodError } from "../types";
+import { ErrorDisplay, ValidationErrorDisplay } from "./ErrorDisplay";
+import { mapBackendErrorToGerman, logError } from "../lib/errorHandling";
+import type { LocalizedError } from "../types";
 
 interface ConfigurationFormProps {
   onConfigChange: (config: ProcessingConfig) => void;
@@ -19,7 +21,8 @@ interface ConfigurationFormProps {
 
 export function ConfigurationForm({ onConfigChange, disabled = false, initialConfig }: ConfigurationFormProps) {
   const [isSelectingDirectory, setIsSelectingDirectory] = useState(false);
-  const [directoryError, setDirectoryError] = useState<string | null>(null);
+  const [directoryError, setDirectoryError] = useState<LocalizedError | null>(null);
+  const [validationErrors, setValidationErrors] = useState<Record<string, LocalizedError[]>>({});
 
   // Initialize form with react-hook-form and Zod validation
   const form = useForm<ProcessingConfigInput>({
@@ -55,7 +58,9 @@ export function ConfigurationForm({ onConfigChange, disabled = false, initialCon
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      setDirectoryError(errorMessage);
+      const localizedError = mapBackendErrorToGerman(errorMessage);
+      setDirectoryError(localizedError);
+      logError(localizedError, "ConfigurationForm");
     } finally {
       setIsSelectingDirectory(false);
     }
@@ -66,7 +71,18 @@ export function ConfigurationForm({ onConfigChange, disabled = false, initialCon
     const validation = processingConfigSchema.safeParse(data);
 
     if (validation.success) {
+      setValidationErrors({});
       onConfigChange(validation.data);
+    } else {
+      const errors = transformZodError(validation.error);
+      setValidationErrors(errors);
+
+      // Log validation errors
+      Object.values(errors)
+        .flat()
+        .forEach(error => {
+          logError(error, "ConfigurationForm");
+        });
     }
   };
 
@@ -91,7 +107,7 @@ export function ConfigurationForm({ onConfigChange, disabled = false, initialCon
     return `${timestamp}_${baseName}_001.pdf`;
   };
 
-  const isFormValid = formState.isValid && !directoryError;
+  const isFormValid = formState.isValid && !directoryError && Object.keys(validationErrors).length === 0;
 
   return (
     <Card className={`transition-opacity ${disabled ? "opacity-50" : ""}`}>
@@ -208,10 +224,17 @@ export function ConfigurationForm({ onConfigChange, disabled = false, initialCon
 
             {/* Directory Selection Error */}
             {directoryError && (
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{directoryError}</AlertDescription>
-              </Alert>
+              <ErrorDisplay
+                error={directoryError}
+                onDismiss={() => setDirectoryError(null)}
+                onSelectNewDirectory={handleDirectorySelect}
+                compact={true}
+              />
+            )}
+
+            {/* Validation Errors */}
+            {Object.keys(validationErrors).length > 0 && (
+              <ValidationErrorDisplay errors={validationErrors} onDismiss={() => setValidationErrors({})} />
             )}
 
             {/* Configuration Status */}
