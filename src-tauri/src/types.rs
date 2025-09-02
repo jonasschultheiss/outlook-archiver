@@ -79,9 +79,14 @@ impl ProcessingConfig {
             }
         }
 
-        // Validate output directory
+        // Validate output directory using DirectoryValidator
         if self.output_directory.is_empty() {
             return Err(ValidationError::RequiredFieldMissing("output_directory".to_string()));
+        }
+        
+        // Use DirectoryValidator for comprehensive directory validation
+        if let Err(e) = crate::directory_validator::DirectoryValidator::validate_directory_path(&self.output_directory) {
+            return Err(e);
         }
 
         Ok(())

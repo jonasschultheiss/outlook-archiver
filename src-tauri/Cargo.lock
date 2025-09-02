@@ -2502,6 +2502,8 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "chrono",
+ "lazy_static",
+ "libc",
  "printpdf",
  "serde",
  "serde_json",
@@ -2513,6 +2515,7 @@ dependencies = [
  "thiserror 1.0.69",
  "tokio",
  "uuid",
+ "winapi",
 ]
 
 [[package]]

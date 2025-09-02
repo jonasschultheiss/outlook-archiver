@@ -34,6 +34,14 @@ printpdf = "0.6"
 tokio = { version = "1.0", features = ["full"] }
 anyhow = "1.0"
 uuid = { version = "1.0", features = ["v4", "serde"] }
+lazy_static = "1.4"
+
+# Platform-specific dependencies for disk space checking
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
+[target.'cfg(windows)'.dependencies]
+winapi = { version = "0.3", features = ["fileapi", "minwindef"] }
 
 [dev-dependencies]
 tempfile = "3.0"
